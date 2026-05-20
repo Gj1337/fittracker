@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitTracker - Exercise Companion</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Prevents double-tap zooming on mobile screens for instantaneous rep counting responses */
+        .tap-zone {
+            touch-action: manipulation;
+        }
+
+        /* Smooth transitions when switching themes */
+        body,
+        section,
+        div,
+        button {
+            transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <main class="flex-1 flex flex-col max-w-md w-full mx-auto px-4 py-6 relative">
+
+        <section id="screen-main" class="flex-1 flex flex-col justify-between py-8 relative">
+
+            <div class="absolute top-0 right-0">
+                <button onclick="toggleTheme()"
+                    class="p-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700/60 text-slate-700 dark:text-indigo-400 cursor-pointer shadow-sm transition"
+                    aria-label="Toggle Theme">
+                    <svg id="theme-icon-sun" class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                    </svg>
+                    <svg id="theme-icon-moon" class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="text-center space-y-2 mt-4">
+                <h1
+                    class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-cyan-600 dark:from-indigo-400 dark:to-cyan-400">
+                    FitTracker
+                </h1>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Track reps, build consistency</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div
+                    class="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 text-center shadow-md dark:shadow-xl backdrop-blur-sm">
+                    <span
+                        class="text-[10px] font-bold tracking-wider text-indigo-600 dark:text-indigo-400 uppercase">Pushups</span>
+                    <div id="stat-lifetime-pushups"
+                        class="text-3xl font-black mt-1 text-slate-900 dark:text-white tabular-nums">0</div>
+                </div>
+                <div
+                    class="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 text-center shadow-md dark:shadow-xl backdrop-blur-sm">
+                    <span
+                        class="text-[10px] font-bold tracking-wider text-cyan-600 dark:text-cyan-400 uppercase">Squats</span>
+                    <div id="stat-lifetime-squats"
+                        class="text-3xl font-black mt-1 text-slate-900 dark:text-white tabular-nums">0</div>
+                </div>
+            </div>
+
+            <div class="space-y-4 mb-4">
+
+                <div
+                    class="bg-slate-200/80 dark:bg-slate-800/80 p-1 rounded-xl flex border border-slate-300/30 dark:border-slate-700/30 shadow-inner">
+                    <button onclick="setExercise('pushup')" id="chip-pushup"
+                        class="flex-1 py-2.5 rounded-lg text-sm font-bold transition duration-200 cursor-pointer">
+                        💪 Push-ups
+                    </button>
+                    <button onclick="setExercise('squat')" id="chip-squat"
+                        class="flex-1 py-2.5 rounded-lg text-sm font-bold transition duration-200 cursor-pointer">
+                        🦵 Squats
+                    </button>
+                </div>
+
+                <button onclick="startPracticeMode()"
+                    class="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-[0.99] text-white font-bold py-4 px-6 rounded-xl transition shadow-lg shadow-indigo-900/10 dark:shadow-indigo-900/30 cursor-pointer">
+                    🔥 Practice Free-play
+                </button>
+                <button onclick="showScreen('screen-difficulty')"
+                    class="w-full bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 active:scale-[0.99] text-slate-800 dark:text-white font-bold py-4 px-6 rounded-xl transition cursor-pointer shadow-sm">
+                    🏆 Structured Training
+                </button>
+                <button onclick="goToProgressScreen()"
+                    class="w-full bg-slate-200/60 dark:bg-slate-800/40 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-300 py-3 px-6 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 cursor-pointer">
+                    📊 View Progress Graph
+                </button>
+            </div>
+        </section>
+
+        <section id="screen-difficulty" class="hidden flex-1 flex flex-col justify-between py-6">
+            <div>
+                <h2 id="difficulty-title" class="text-2xl font-bold mb-1 text-slate-900 dark:text-white">Select
+                    Difficulty</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">Choose a structured hardcoded workout routine
+                </p>
+
+                <div class="space-y-3">
+                    <button onclick="startTrainingMode('easy')"
+                        class="w-full text-left bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/60 p-4 rounded-xl transition cursor-pointer shadow-sm">
+                        <div class="font-bold text-emerald-600 dark:text-emerald-400 text-lg">Easy Routine</div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">3 sets × 5 reps <span
+                                class="mx-1.5">•</span>
+                            1 min rests</div>
+                    </button>
+                    <button onclick="startTrainingMode('medium')"
+                        class="w-full text-left bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/60 p-4 rounded-xl transition cursor-pointer shadow-sm">
+                        <div class="font-bold text-amber-600 dark:text-amber-400 text-lg">Medium Routine</div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">4 sets × 10 reps <span
+                                class="mx-1.5">•</span> 1 min rests</div>
+                    </button>
+                    <button onclick="startTrainingMode('hard')"
+                        class="w-full text-left bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/60 p-4 rounded-xl transition cursor-pointer shadow-sm">
+                        <div class="font-bold text-rose-600 dark:text-rose-400 text-lg">Hard Routine</div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">5 sets × 15 reps <span
+                                class="mx-1.5">•</span> 1 min rests</div>
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="showScreen('screen-main')"
+                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 py-3.5 px-6 rounded-xl font-medium transition cursor-pointer shadow-sm">
+                Back to Menu
+            </button>
+        </section>
+
+        <section id="screen-active" class="hidden flex-1 flex flex-col justify-between tap-zone select-none py-6">
+            <div class="flex items-center justify-between pointer-events-none">
+                <div class="flex items-center gap-1.5">
+                    <span id="active-tag-mode"
+                        class="text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Practice</span>
+                    <span id="active-tag-exercise"
+                        class="text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-600 dark:text-slate-300 border border-slate-500/20">Pushup</span>
+                    <span id="active-tag-difficulty"
+                        class="hidden text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">Medium</span>
+                </div>
+                <div id="active-set-counter"
+                    class="hidden text-sm font-semibold text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-800/50 px-3 py-1 rounded-lg">
+                    Set 1 of 4</div>
+            </div>
+
+            <div onclick="handleScreenTap(event)"
+                class="flex-1 flex flex-col items-center justify-center cursor-pointer my-4 group rounded-2xl hover:bg-slate-200/50 dark:hover:bg-slate-800/10 active:bg-slate-200 dark:active:bg-slate-800/20 transition-colors">
+                <span id="tap-instruction-text"
+                    class="text-slate-400 dark:text-slate-500 text-xs tracking-widest uppercase mb-2 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors pointer-events-none">Tap
+                    Anywhere to Count</span>
+                <div id="active-rep-display"
+                    class="text-9xl font-black tracking-tighter text-slate-900 dark:text-white transition-transform scale-100 group-active:scale-95 pointer-events-none tabular-nums">
+                    0</div>
+                <div id="active-target-display"
+                    class="hidden text-slate-500 dark:text-slate-400 font-medium text-lg mt-2 pointer-events-none">
+                    Target: <span class="font-bold text-slate-900 dark:text-white">10</span> reps</div>
+            </div>
+
+            <div class="z-10">
+                <button onclick="stopActiveSession()"
+                    class="w-full bg-rose-600/10 hover:bg-rose-600/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-semibold py-3.5 px-6 rounded-xl transition cursor-pointer">
+                    Stop & Save Session
+                </button>
+            </div>
+
+            <div id="rest-overlay"
+                class="hidden absolute inset-0 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 z-20">
+                <span class="text-indigo-600 dark:text-indigo-400 text-xs font-bold tracking-widest uppercase mb-2">Rest
+                    Period
+                    Active</span>
+                <h3 class="text-xl font-bold text-slate-700 dark:text-slate-300 mb-6">Catch Your Breath</h3>
+                <div id="rest-timer-display"
+                    class="text-8xl font-black text-slate-900 dark:text-white mb-8 tracking-tight tabular-nums">01:00
+                </div>
+                <button onclick="skipRestTimer()"
+                    class="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium px-6 py-2.5 rounded-lg text-sm transition cursor-pointer shadow-sm">
+                    Skip Rest Period
+                </button>
+            </div>
+        </section>
+
+        <section id="screen-progress" class="hidden flex-1 flex flex-col justify-between py-6">
+            <div class="space-y-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">Your Progress</h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Performance tracking chart over last 7 days
+                    </p>
+                </div>
+
+                <div
+                    class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/40 rounded-xl p-4 shadow-sm dark:shadow-inner">
+                    <canvas id="progressChart" class="w-full max-h-[220px]"></canvas>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">Recent Workouts</h3>
+                    <div id="log-list-container" class="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="showScreen('screen-main')"
+                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 py-3.5 px-6 rounded-xl font-medium transition cursor-pointer mt-4 shadow-sm">
+                Back to Menu
+            </button>
+        </section>
+
+    </main>
+
+    <script>
+        // --------------------------------------------------------
+        // HARDCODED CONSTANTS & STATE STORES
+        // --------------------------------------------------------
+        const CONFIGS = {
+            easy: { totalSets: 3, repsPerSet: 5 },
+            medium: { totalSets: 4, repsPerSet: 10 },
+            hard: { totalSets: 5, repsPerSet: 15 }
+        };
+
+        let appData = {
+            lifetimePushups: 0,
+            lifetimeSquats: 0,
+            history: [],
+            theme: 'dark' // Default theme fallback
+        };
+
+        let activeExercise = 'pushup'; // 'pushup' or 'squat' default state context
+
+        let session = {
+            exercise: 'pushup',
+            mode: 'practice',
+            difficulty: null,
+            currentSet: 1,
+            currentReps: 0,
+            totalSessionReps: 0
+        };
+
+        let timerInterval = null;
+        let chartInstance = null;
+        let audioCtx = null; // System Audio Node Reference Placeholder
+
+        // --------------------------------------------------------
+        // MOUNT ENGINE OPERATIONS
+        // --------------------------------------------------------
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDataFromCache();
+            initTheme();
+            updateChipsUI();
+            showScreen('screen-main');
+        });
+
+        function loadDataFromCache() {
+            const stored = localStorage.getItem('pushup_tracker_data');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    appData.history = parsed.history || [];
+                    appData.theme = parsed.theme || 'dark';
+
+                    // Backwards data migration logic for legacy cache instances
+                    if (parsed.hasOwnProperty('lifetimeTotal') && !parsed.hasOwnProperty('lifetimePushups')) {
+                        appData.lifetimePushups = parsed.lifetimeTotal || 0;
+                        appData.lifetimeSquats = 0;
+                    } else {
+                        appData.lifetimePushups = parsed.lifetimePushups || 0;
+                        appData.lifetimeSquats = parsed.lifetimeSquats || 0;
+                    }
+                } catch (e) {
+                    console.error("Cache processing error. Resetting storage schemas.", e);
+                }
+            }
+            refreshStatsDisplayUI();
+        }
+
+        function saveDataToCache() {
+            localStorage.setItem('pushup_tracker_data', JSON.stringify(appData));
+            refreshStatsDisplayUI();
+        }
+
+        function refreshStatsDisplayUI() {
+            document.getElementById('stat-lifetime-pushups').textContent = appData.lifetimePushups;
+            document.getElementById('stat-lifetime-squats').textContent = appData.lifetimeSquats;
+        }
+
+        // --------------------------------------------------------
+        // AUDIO GENERATION SYNTHESIS CORE Engine (Web Audio API)
+        // --------------------------------------------------------
+        function initAudioEngine() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playRepFeedbackSound() {
+            try {
+                initAudioEngine();
+                const now = audioCtx.currentTime;
+
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = 'sine';
+                // High frequency micro blip for clear responsive mechanical execution
+                oscillator.frequency.setValueAtTime(650, now);
+
+                gainNode.gain.setValueAtTime(0.15, now);
+                // Instant exponential audio volume fade down to prevent pop clicks
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start(now);
+                oscillator.stop(now + 0.06);
+            } catch (err) {
+                console.warn("Audio feedback context failed to compile:", err);
+            }
+        }
+
+        function playTimerCompletionSound() {
+            try {
+                initAudioEngine();
+                const now = audioCtx.currentTime;
+
+                // Loop 3 times to cleanly repeat the high-low double-beep notification sequence
+                for (let i = 0; i < 3; i++) {
+                    const repOffset = i * 0.6; // Spaces each complete double-beep sequence 600ms apart
+
+                    // Beep Tone #1 (High note)
+                    const osc1 = audioCtx.createOscillator();
+                    const gain1 = audioCtx.createGain();
+                    osc1.type = 'sine';
+                    osc1.frequency.setValueAtTime(880, now + repOffset); // Node A5
+                    gain1.gain.setValueAtTime(0.25, now + repOffset);
+                    gain1.gain.exponentialRampToValueAtTime(0.001, now + repOffset + 0.15);
+                    osc1.connect(gain1);
+                    gain1.connect(audioCtx.destination);
+                    osc1.start(now + repOffset);
+                    osc1.stop(now + repOffset + 0.15);
+
+                    // Beep Tone #2 (Higher complementary accent note triggered 180ms later)
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(1109.73, now + repOffset + 0.18); // Node C#6
+                    gain2.gain.setValueAtTime(0.25, now + repOffset + 0.18);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, now + repOffset + 0.45);
+                    osc2.connect(gain2);
+                    gain2.connect(audioCtx.destination);
+                    osc2.start(now + repOffset + 0.18);
+                    osc2.stop(now + repOffset + 0.45);
+                }
+            } catch (err) {
+                console.warn("Chime alert failure:", err);
+            }
+        }
+
+        // --------------------------------------------------------
+        // CHIP SELECTOR MECHANICAL OPERATION
+        // --------------------------------------------------------
+        function setExercise(type) {
+            initAudioEngine(); // Capture initialization intent
+            activeExercise = type;
+            updateChipsUI();
+
+            const diffTitle = document.getElementById('difficulty-title');
+            diffTitle.textContent = `Select ${type === 'pushup' ? 'Push-up' : 'Squat'} Difficulty`;
+        }
+
+        function updateChipsUI() {
+            const pushupBtn = document.getElementById('chip-pushup');
+            const squatBtn = document.getElementById('chip-squat');
+
+            const activeClasses = ['bg-white', 'dark:bg-slate-700', 'text-slate-900', 'dark:text-white', 'shadow-sm'];
+            const inactiveClasses = ['text-slate-500', 'dark:text-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-300'];
+
+            if (activeExercise === 'pushup') {
+                pushupBtn.classList.remove(...inactiveClasses);
+                pushupBtn.classList.add(...activeClasses);
+                squatBtn.classList.remove(...activeClasses);
+                squatBtn.classList.add(...inactiveClasses);
+            } else {
+                squatBtn.classList.remove(...inactiveClasses);
+                squatBtn.classList.add(...activeClasses);
+                pushupBtn.classList.remove(...activeClasses);
+                pushupBtn.classList.add(...inactiveClasses);
+            }
+        }
+
+        // --------------------------------------------------------
+        // THEME HANDLING ENGINE
+        // --------------------------------------------------------
+        function initTheme() {
+            if (appData.theme === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-icon-sun').classList.remove('hidden');
+            } else {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon-moon').classList.remove('hidden');
+            }
+        }
+
+        function toggleTheme() {
+            initAudioEngine();
+            const isDark = document.documentElement.classList.contains('dark');
+            const sunIcon = document.getElementById('theme-icon-sun');
+            const moonIcon = document.getElementById('theme-icon-moon');
+
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                moonIcon.classList.add('hidden');
+                sunIcon.classList.remove('hidden');
+                appData.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+                appData.theme = 'dark';
+            }
+
+            saveDataToCache();
+
+            if (!document.getElementById('screen-progress').classList.contains('hidden')) {
+                renderAnalyticsChart();
+            }
+        }
+
+        function showScreen(screenId) {
+            ['screen-main', 'screen-difficulty', 'screen-active', 'screen-progress'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        // --------------------------------------------------------
+        // RUNTIME WORKOUT SESSION ROUTING
+        // --------------------------------------------------------
+        function startPracticeMode() {
+            initAudioEngine();
+            session.exercise = activeExercise;
+            session.mode = 'practice';
+            session.difficulty = null;
+            session.currentSet = 1;
+            session.currentReps = 0;
+            session.totalSessionReps = 0;
+
+            document.getElementById('active-tag-mode').textContent = 'Practice';
+
+            const exTag = document.getElementById('active-tag-exercise');
+            exTag.textContent = session.exercise === 'pushup' ? 'Push-up' : 'Squat';
+
+            document.getElementById('active-tag-difficulty').classList.add('hidden');
+            document.getElementById('active-set-counter').classList.add('hidden');
+            document.getElementById('active-target-display').classList.add('hidden');
+
+            document.getElementById('tap-instruction-text').textContent = `Tap Anywhere to Count ${session.exercise === 'pushup' ? 'Push-ups' : 'Squats'}`;
+
+            updateRepDisplay();
+            showScreen('screen-active');
+        }
+
+        function startTrainingMode(difficulty) {
+            initAudioEngine();
+            session.exercise = activeExercise;
+            session.mode = 'training';
+            session.difficulty = difficulty;
+            session.currentSet = 1;
+            session.currentReps = 0;
+            session.totalSessionReps = 0;
+
+            const config = CONFIGS[difficulty];
+
+            document.getElementById('active-tag-mode').textContent = 'Training';
+
+            const exTag = document.getElementById('active-tag-exercise');
+            exTag.textContent = session.exercise === 'pushup' ? 'Push-up' : 'Squat';
+
+            const diffTag = document.getElementById('active-tag-difficulty');
+            diffTag.textContent = difficulty;
+            diffTag.className = `text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full border ${difficulty === 'easy' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+                difficulty === 'medium' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
+                    'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                }`;
+            diffTag.classList.remove('hidden');
+
+            document.getElementById('active-set-counter').classList.remove('hidden');
+            document.getElementById('active-target-display').classList.remove('hidden');
+            document.getElementById('active-target-display').querySelector('span').textContent = config.repsPerSet;
+            document.getElementById('tap-instruction-text').textContent = `Tap Anywhere to Count ${session.exercise === 'pushup' ? 'Push-ups' : 'Squats'}`;
+
+            updateSetCounterDisplay();
+            updateRepDisplay();
+            showScreen('screen-active');
+        }
+
+        function handleScreenTap(event) {
+            if (document.getElementById('rest-overlay').classList.contains('hidden') === false) return;
+
+            // Direct acoustic audio click play trigger
+            playRepFeedbackSound();
+
+            session.currentReps++;
+            session.totalSessionReps++;
+            updateRepDisplay();
+
+            if (session.mode === 'training') {
+                const config = CONFIGS[session.difficulty];
+                if (session.currentReps >= config.repsPerSet) {
+                    handleSetCompletion();
+                }
+            }
+        }
+
+        function updateRepDisplay() {
+            document.getElementById('active-rep-display').textContent = session.currentReps;
+        }
+
+        function updateSetCounterDisplay() {
+            if (session.mode === 'training') {
+                document.getElementById('active-set-counter').textContent = `Set ${session.currentSet} of ${CONFIGS[session.difficulty].totalSets}`;
+            }
+        }
+
+        // --------------------------------------------------------
+        // TIMING AUTOMATIONS & INTERMISSIONS
+        // --------------------------------------------------------
+        function handleSetCompletion() {
+            const config = CONFIGS[session.difficulty];
+            if (session.currentSet >= config.totalSets) {
+                stopActiveSession();
+            } else {
+                launchRestInterval();
+            }
+        }
+
+        function launchRestInterval() {
+            const overlay = document.getElementById('rest-overlay');
+            const timerView = document.getElementById('rest-timer-display');
+            let timeLeft = 60;
+
+            timerView.textContent = "01:00";
+            overlay.classList.remove('hidden');
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                const secondsStr = timeLeft < 10 ? `0${timeLeft}` : timeLeft;
+                timerView.textContent = `00:${secondsStr}`;
+
+                if (timeLeft <= 0) {
+                    playTimerCompletionSound(); // Plays the notification sequence 3 times sequentially
+                    exitRestInterval();
+                }
+            }, 1000);
+        }
+
+        function skipRestTimer() {
+            exitRestInterval();
+        }
+
+        function exitRestInterval() {
+            clearInterval(timerInterval);
+            document.getElementById('rest-overlay').classList.add('hidden');
+
+            session.currentSet++;
+            session.currentReps = 0;
+            updateSetCounterDisplay();
+            updateRepDisplay();
+        }
+
+        function stopActiveSession() {
+            clearInterval(timerInterval);
+            document.getElementById('rest-overlay').classList.add('hidden');
+
+            if (session.totalSessionReps > 0) {
+                const todayStr = new Date().toISOString().split('T')[0];
+
+                const logEntry = {
+                    id: Date.now().toString(),
+                    date: todayStr,
+                    exercise: session.exercise,
+                    mode: session.mode,
+                    difficulty: session.difficulty,
+                    totalRepsCompleted: session.totalSessionReps
+                };
+
+                appData.history.unshift(logEntry);
+
+                if (session.exercise === 'pushup') {
+                    appData.lifetimePushups += session.totalSessionReps;
+                } else {
+                    appData.lifetimeSquats += session.totalSessionReps;
+                }
+
+                saveDataToCache();
+            }
+
+            showScreen('screen-main');
+        }
+
+        // --------------------------------------------------------
+        // LOG VIEW GENERATION & GRAPH CALCULATIONS
+        // --------------------------------------------------------
+        function goToProgressScreen() {
+            initAudioEngine();
+            showScreen('screen-progress');
+            buildLogListUI();
+            renderAnalyticsChart();
+        }
+
+        function buildLogListUI() {
+            const container = document.getElementById('log-list-container');
+            container.innerHTML = '';
+
+            if (appData.history.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 dark:text-slate-500 text-sm">No exercises recorded yet.</div>`;
+                return;
+            }
+
+            appData.history.slice(0, 15).forEach(log => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-sm shadow-sm";
+
+                const dateObj = new Date(log.date);
+                const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                const modeLabel = log.mode === 'practice' ? 'Practice' : `${log.difficulty.charAt(0).toUpperCase() + log.difficulty.slice(1)} Routine`;
+                const exerciseTypeLabel = log.exercise === 'squat' ? 'Squats' : 'Push-ups';
+                const colorMetricClass = log.exercise === 'squat' ? 'text-cyan-600 dark:text-cyan-400' : 'text-indigo-600 dark:text-indigo-400';
+
+                row.innerHTML = `
+          <div>
+            <div class="font-semibold text-slate-800 dark:text-slate-200">${exerciseTypeLabel} <span class="text-xs font-normal text-slate-400 dark:text-slate-500">(${modeLabel})</span></div>
+            <div class="text-xs text-slate-400 dark:text-slate-500">${formattedDate}</div>
+          </div>
+          <div class="text-lg font-bold ${colorMetricClass}">+${log.totalRepsCompleted}</div>
+        `;
+                container.appendChild(row);
+            });
+        }
+
+        function renderAnalyticsChart() {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            const isDarkMode = document.documentElement.classList.contains('dark');
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const last7Days = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                last7Days.push(d.toISOString().split('T')[0]);
+            }
+
+            const pushupsPerDay = last7Days.map(dateKey => {
+                return appData.history
+                    .filter(log => log.date === dateKey && (log.exercise === 'pushup' || !log.hasOwnProperty('exercise')))
+                    .reduce((sum, log) => sum + log.totalRepsCompleted, 0);
+            });
+
+            const squatsPerDay = last7Days.map(dateKey => {
+                return appData.history
+                    .filter(log => log.date === dateKey && log.exercise === 'squat')
+                    .reduce((sum, sumLog) => sum + sumLog.totalRepsCompleted, 0);
+            });
+
+            const labelAxis = last7Days.map(dateKey => {
+                const parts = dateKey.split('-');
+                const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+
+            const textConfigColor = isDarkMode ? '#94a3b8' : '#64748b';
+            const wireframeGridColor = isDarkMode ? '#334155' : '#e2e8f0';
+            const popupBgColor = isDarkMode ? '#1e293b' : '#ffffff';
+            const popupTextColor = isDarkMode ? '#ffffff' : '#0f172a';
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labelAxis,
+                    datasets: [
+                        {
+                            label: 'Pushups',
+                            data: pushupsPerDay,
+                            backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.75)' : 'rgba(79, 70, 229, 0.85)',
+                            hoverBackgroundColor: isDarkMode ? 'rgba(129, 140, 248, 1)' : 'rgba(67, 56, 202, 1)',
+                            borderRadius: 5,
+                            borderSkipped: false,
+                        },
+                        {
+                            label: 'Squats',
+                            data: squatsPerDay,
+                            backgroundColor: isDarkMode ? 'rgba(6, 182, 212, 0.75)' : 'rgba(14, 116, 144, 0.85)',
+                            hoverBackgroundColor: isDarkMode ? 'rgba(34, 211, 238, 1)' : 'rgba(21, 94, 117, 1)',
+                            borderRadius: 5,
+                            borderSkipped: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: textConfigColor,
+                                boxWidth: 12,
+                                font: { size: 11, weight: 'bold' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: popupBgColor,
+                            titleColor: textConfigColor,
+                            bodyColor: popupTextColor,
+                            borderColor: wireframeGridColor,
+                            borderWidth: isDarkMode ? 0 : 1,
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: true
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: textConfigColor, font: { size: 11 } }
+                        },
+                        y: {
+                            border: { dash: [4, 4], color: wireframeGridColor },
+                            grid: { color: wireframeGridColor },
+                            ticks: { color: textConfigColor, font: { size: 11 }, precision: 0 },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW registered!', reg))
+                    .catch(err => console.error('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+
+</html>
