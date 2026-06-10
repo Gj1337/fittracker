@@ -239,6 +239,25 @@
 
         let activeExercise = 'pushup'; // 'pushup' or 'squat' default state context
 
+        let wakeLock = null;
+
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                } catch (err) {
+                    console.warn(`Wake Lock request failed: ${err.name}, ${err.message}`);
+                }
+            }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+        }
+
         let session = {
             exercise: 'pushup',
             mode: 'practice',
@@ -260,6 +279,13 @@
             initTheme();
             updateChipsUI();
             showScreen('screen-main');
+
+            // Handle wake lock re-acquisition on visibility change
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && !document.getElementById('screen-active').classList.contains('hidden')) {
+                    requestWakeLock();
+                }
+            });
         });
 
         function loadDataFromCache() {
@@ -453,6 +479,7 @@
         // --------------------------------------------------------
         function startPracticeMode() {
             initAudioEngine();
+            requestWakeLock();
             session.exercise = activeExercise;
             session.mode = 'practice';
             session.difficulty = null;
@@ -477,6 +504,7 @@
 
         function startTrainingMode(difficulty) {
             initAudioEngine();
+            requestWakeLock();
             session.exercise = activeExercise;
             session.mode = 'training';
             session.difficulty = difficulty;
@@ -585,6 +613,7 @@
 
         function stopActiveSession() {
             clearInterval(timerInterval);
+            releaseWakeLock();
             document.getElementById('rest-overlay').classList.add('hidden');
 
             if (session.totalSessionReps > 0) {
