@@ -190,8 +190,17 @@
             <div class="space-y-6">
                 <div>
                     <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">Your Progress</h2>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Performance tracking chart over last 7 days
-                    </p>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Performance tracking history</p>
+                </div>
+
+                <div class="flex items-center justify-between px-1">
+                    <button onclick="changeChartWeek(1)" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <span id="chart-range-label" class="text-sm font-bold text-slate-600 dark:text-slate-300 tabular-nums">Loading...</span>
+                    <button id="btn-next-week" onclick="changeChartWeek(-1)" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
                 </div>
 
                 <div
@@ -232,6 +241,7 @@
         };
 
         let activeExercise = 'pushup'; // 'pushup' or 'squat' default state context
+        let chartWeekOffset = 0; // 0 = current week, 1 = previous week, etc.
 
         let wakeLock = null;
 
@@ -250,6 +260,12 @@
                 wakeLock.release();
                 wakeLock = null;
             }
+        }
+
+        function changeChartWeek(delta) {
+            chartWeekOffset += delta;
+            if (chartWeekOffset < 0) chartWeekOffset = 0;
+            renderAnalyticsChart();
         }
 
         let session = {
@@ -668,32 +684,41 @@
                 chartInstance.destroy();
             }
 
-            const last7Days = [];
+            // Calculate the 7-day window based on chartWeekOffset
+            const rangeDays = [];
             for (let i = 6; i >= 0; i--) {
                 const d = new Date();
-                d.setDate(d.getDate() - i);
-                last7Days.push(d.toISOString().split('T')[0]);
+                // Offset by (chartWeekOffset * 7) days
+                d.setDate(d.getDate() - i - (chartWeekOffset * 7));
+                rangeDays.push(d.toISOString().split('T')[0]);
             }
 
-            const pushupsPerDay = last7Days.map(dateKey => {
+            // Update UI Labels
+            const startDate = new Date(rangeDays[0]);
+            const endDate = new Date(rangeDays[6]);
+            const options = { month: 'short', day: 'numeric' };
+            document.getElementById('chart-range-label').textContent = `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', options)}`;
+            document.getElementById('btn-next-week').disabled = (chartWeekOffset <= 0);
+
+            const pushupsPerDay = rangeDays.map(dateKey => {
                 return appData.history
                     .filter(log => log.date === dateKey && (log.exercise === 'pushup' || !log.hasOwnProperty('exercise')))
                     .reduce((sum, log) => sum + log.totalRepsCompleted, 0);
             });
 
-            const squatsPerDay = last7Days.map(dateKey => {
+            const squatsPerDay = rangeDays.map(dateKey => {
                 return appData.history
                     .filter(log => log.date === dateKey && log.exercise === 'squat')
                     .reduce((sum, sumLog) => sum + sumLog.totalRepsCompleted, 0);
             });
 
-            const crunchesPerDay = last7Days.map(dateKey => {
+            const crunchesPerDay = rangeDays.map(dateKey => {
                 return appData.history
                     .filter(log => log.date === dateKey && log.exercise === 'crunch')
                     .reduce((sum, sumLog) => sum + sumLog.totalRepsCompleted, 0);
             });
 
-            const labelAxis = last7Days.map(dateKey => {
+            const labelAxis = rangeDays.map(dateKey => {
                 const parts = dateKey.split('-');
                 const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
                 return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
