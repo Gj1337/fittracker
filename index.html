@@ -207,11 +207,7 @@
         </section>
 
         <section id="screen-active" class="hidden flex-1 flex flex-col justify-between tap-zone select-none py-6">
-            <div class="flex items-center gap-3 pointer-events-auto">
-                <button type="button" onclick="navigateBack()" aria-label="Leave workout"
-                    class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                </button>
+            <div class="flex items-center gap-3 pointer-events-none">
                 <div class="flex items-center gap-1.5">
                     <span id="active-tag-mode"
                         class="text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Practice</span>
@@ -422,7 +418,8 @@
                 const nextScreen = event.state && event.state.screenId ? event.state.screenId :
                     (validScreens.includes(hashScreen) ? hashScreen : 'screen-main');
                 if (currentScreen === 'screen-active' && nextScreen !== 'screen-active') {
-                    stopActiveSession({ navigate: false });
+                    window.history.forward();
+                    return;
                 }
                 showScreen(nextScreen);
                 if (nextScreen === 'screen-progress') {
