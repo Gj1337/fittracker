@@ -17,6 +17,20 @@
             touch-action: manipulation;
         }
 
+        .rep-pace-progress {
+            stroke-dasharray: 283;
+            stroke-dashoffset: 0;
+        }
+
+        .rep-pace-progress.is-counting {
+            animation: rep-pace-countdown 3s linear forwards;
+        }
+
+        @keyframes rep-pace-countdown {
+            from { stroke-dashoffset: 0; }
+            to { stroke-dashoffset: 283; }
+        }
+
         /* Smooth transitions when switching themes */
         body,
         section,
@@ -216,9 +230,15 @@
                 <span id="tap-instruction-text"
                     class="text-slate-400 dark:text-slate-500 text-xs tracking-widest uppercase mb-2 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors pointer-events-none">Tap
                     Anywhere to Count</span>
-                <div id="active-rep-display"
-                    class="text-9xl font-black tracking-tighter text-slate-900 dark:text-white transition-transform scale-100 group-active:scale-95 pointer-events-none tabular-nums">
-                    0</div>
+                <div class="relative flex items-center justify-center w-64 h-64 pointer-events-none">
+                    <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-200 dark:text-slate-800" />
+                        <circle id="rep-pace-progress" cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="rep-pace-progress text-indigo-500 dark:text-indigo-400" />
+                    </svg>
+                    <div id="active-rep-display"
+                        class="text-9xl font-black tracking-tighter text-slate-900 dark:text-white transition-transform scale-100 group-active:scale-95 tabular-nums">
+                        0</div>
+                </div>
                 <div id="active-target-display"
                     class="hidden text-slate-500 dark:text-slate-400 font-medium text-lg mt-2 pointer-events-none">
                     Target: <span class="font-bold text-slate-900 dark:text-white">10</span> reps</div>
@@ -945,6 +965,7 @@
             document.getElementById('active-tag-difficulty').classList.add('hidden');
             document.getElementById('active-set-counter').classList.add('hidden');
             document.getElementById('active-target-display').classList.add('hidden');
+            document.getElementById('rep-pace-progress').classList.add('hidden');
 
             document.getElementById('tap-instruction-text').textContent = `Tap Anywhere to Count ${label}s`;
 
@@ -1005,6 +1026,7 @@
 
             document.getElementById('active-set-counter').classList.remove('hidden');
             document.getElementById('active-target-display').classList.remove('hidden');
+            document.getElementById('rep-pace-progress').classList.add('hidden');
             document.getElementById('active-target-display').querySelector('span').textContent = plan.sets[0].reps;
             document.getElementById('tap-instruction-text').textContent = `Tap Anywhere to Count ${label}s`;
 
@@ -1022,6 +1044,8 @@
             session.currentReps++;
             session.totalSessionReps++;
             updateRepDisplay();
+            document.getElementById('rep-pace-progress').classList.remove('hidden');
+            restartRepPaceAnimation();
 
             if (session.mode === 'training') {
                 const set = session.plan.sets[session.currentSet - 1];
@@ -1033,6 +1057,13 @@
 
         function updateRepDisplay() {
             document.getElementById('active-rep-display').textContent = session.currentReps;
+        }
+
+        function restartRepPaceAnimation() {
+            const progress = document.getElementById('rep-pace-progress');
+            progress.getAnimations().forEach(animation => animation.cancel());
+            progress.classList.remove('is-counting');
+            requestAnimationFrame(() => progress.classList.add('is-counting'));
         }
 
         function updateSetCounterDisplay() {
@@ -1094,6 +1125,7 @@
             session.currentReps = 0;
             updateSetCounterDisplay();
             updateRepDisplay();
+            document.getElementById('rep-pace-progress').classList.add('hidden');
         }
 
         function stopActiveSession({ navigate = true } = {}) {
