@@ -17,6 +17,20 @@
             touch-action: manipulation;
         }
 
+        .rep-pace-progress {
+            stroke-dasharray: 283;
+            stroke-dashoffset: 0;
+        }
+
+        .rep-pace-progress.is-counting {
+            animation: rep-pace-countdown 3s linear forwards;
+        }
+
+        @keyframes rep-pace-countdown {
+            from { stroke-dashoffset: 0; }
+            to { stroke-dashoffset: 283; }
+        }
+
         /* Smooth transitions when switching themes */
         body,
         section,
@@ -96,7 +110,7 @@
                     class="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-[0.99] text-white font-bold py-4 px-6 rounded-xl transition shadow-lg shadow-indigo-900/10 dark:shadow-indigo-900/30 cursor-pointer">
                     🔥 Practice Free-play
                 </button>
-                <button onclick="showScreen('screen-difficulty')"
+                <button onclick="goToStructuredTrainingScreen()"
                     class="w-full bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 active:scale-[0.99] text-slate-800 dark:text-white font-bold py-4 px-6 rounded-xl transition cursor-pointer shadow-sm">
                     🏆 Structured Training
                 </button>
@@ -109,10 +123,28 @@
 
         <section id="screen-difficulty" class="hidden flex-1 flex flex-col justify-between py-6">
             <div>
+                <div class="flex items-center gap-3 mb-6">
+                    <button type="button" onclick="navigateBack()" aria-label="Back to menu"
+                        class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h1 class="text-lg font-bold text-slate-900 dark:text-white">Structured Training</h1>
+                </div>
                 <h2 id="difficulty-title" class="text-2xl font-bold mb-1 text-slate-900 dark:text-white">Select
                     Difficulty</h2>
-                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">Choose a structured hardcoded workout routine
+                <p id="difficulty-description" class="text-slate-500 dark:text-slate-400 text-sm mb-6">Choose a routine for your selected exercise
                 </p>
+
+                <div class="mb-7">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400">My Routines</h3>
+                        <button type="button" onclick="goToCreateRoutine()"
+                            class="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 cursor-pointer">+ Create</button>
+                    </div>
+                    <div id="custom-routines-list" class="space-y-3"></div>
+                </div>
+
+                <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3">Preset Routines</h3>
 
                 <div class="space-y-3">
                     <button onclick="startTrainingMode('easy')"
@@ -137,14 +169,49 @@
                 </div>
             </div>
 
-            <button onclick="showScreen('screen-main')"
-                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 py-3.5 px-6 rounded-xl font-medium transition cursor-pointer shadow-sm">
-                Back to Menu
-            </button>
+        </section>
+
+        <section id="screen-routine-editor" class="hidden flex-1 py-6">
+            <div class="flex items-center gap-3 mb-6">
+                <button type="button" onclick="navigateBack()" aria-label="Back to routines"
+                    class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <h1 id="routine-editor-title" class="text-lg font-bold text-slate-900 dark:text-white">Create Routine</h1>
+            </div>
+            <form onsubmit="saveRoutine(event)" class="space-y-5">
+                <div>
+                    <label for="routine-name" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Routine name</label>
+                    <input id="routine-name" type="text" maxlength="50" required placeholder="e.g. Morning ladder"
+                        class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <div>
+                            <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Sets</h2>
+                            <p class="text-xs text-slate-400 mt-1">Set rest time for the transition to the next set.</p>
+                        </div>
+                        <button type="button" onclick="addRoutineSet()"
+                            class="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 cursor-pointer">+ Add set</button>
+                    </div>
+                    <div id="routine-set-rows" class="space-y-3"></div>
+                </div>
+                <p id="routine-editor-error" class="hidden text-sm font-medium text-rose-600 dark:text-rose-400"></p>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="navigateBack()"
+                        class="flex-1 py-3.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold cursor-pointer">Cancel</button>
+                    <button type="submit"
+                        class="flex-1 py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold cursor-pointer">Save routine</button>
+                </div>
+            </form>
         </section>
 
         <section id="screen-active" class="hidden flex-1 flex flex-col justify-between tap-zone select-none py-6">
-            <div class="flex items-center justify-between pointer-events-none">
+            <div class="flex items-center gap-3 pointer-events-auto">
+                <button type="button" onclick="navigateBack()" aria-label="Leave workout"
+                    class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
                 <div class="flex items-center gap-1.5">
                     <span id="active-tag-mode"
                         class="text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Practice</span>
@@ -163,9 +230,15 @@
                 <span id="tap-instruction-text"
                     class="text-slate-400 dark:text-slate-500 text-xs tracking-widest uppercase mb-2 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors pointer-events-none">Tap
                     Anywhere to Count</span>
-                <div id="active-rep-display"
-                    class="text-9xl font-black tracking-tighter text-slate-900 dark:text-white transition-transform scale-100 group-active:scale-95 pointer-events-none tabular-nums">
-                    0</div>
+                <div class="relative flex items-center justify-center w-64 h-64 pointer-events-none">
+                    <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-200 dark:text-slate-800" />
+                        <circle id="rep-pace-progress" cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="rep-pace-progress text-indigo-500 dark:text-indigo-400" />
+                    </svg>
+                    <div id="active-rep-display"
+                        class="text-9xl font-black tracking-tighter text-slate-900 dark:text-white transition-transform scale-100 group-active:scale-95 tabular-nums">
+                        0</div>
+                </div>
                 <div id="active-target-display"
                     class="hidden text-slate-500 dark:text-slate-400 font-medium text-lg mt-2 pointer-events-none">
                     Target: <span class="font-bold text-slate-900 dark:text-white">10</span> reps</div>
@@ -196,8 +269,15 @@
 
         <section id="screen-progress" class="hidden flex-1 flex flex-col justify-between py-6">
             <div class="space-y-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">Your Progress</h2>
+            <div>
+                <div class="flex items-center gap-3 mb-6">
+                    <button type="button" onclick="navigateBack()" aria-label="Back to menu"
+                        class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h1 class="text-lg font-bold text-slate-900 dark:text-white">Progress</h1>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">Your Progress</h2>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Performance tracking history</p>
                 </div>
 
@@ -224,15 +304,26 @@
 
                 <div>
                     <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">Recent Workouts</h3>
-                    <div id="log-list-container" class="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                    <div id="log-list-container" class="space-y-2">
                     </div>
+                    <button type="button" onclick="goToWorkoutHistoryScreen()"
+                        class="w-full mt-3 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
+                        View all workouts
+                    </button>
                 </div>
             </div>
 
-            <button onclick="showScreen('screen-main')"
-                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 py-3.5 px-6 rounded-xl font-medium transition cursor-pointer mt-4 shadow-sm">
-                Back to Menu
-            </button>
+        </section>
+
+        <section id="screen-history" class="hidden flex-1 py-6">
+            <div class="flex items-center gap-3 mb-6">
+                <button type="button" onclick="navigateBack()" aria-label="Back to progress"
+                    class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <h1 class="text-lg font-bold text-slate-900 dark:text-white">Workout History</h1>
+            </div>
+            <div id="all-log-list-container" class="space-y-2"></div>
         </section>
 
     </main>
@@ -251,7 +342,8 @@
             lifetimePushups: 0,
             lifetimeSquats: 0,
             lifetimeCrunches: 0,
-            history: []
+            history: [],
+            customRoutines: []
         };
 
         let activeExercise = 'pushup'; // 'pushup' or 'squat' default state context
@@ -286,6 +378,9 @@
             exercise: 'pushup',
             mode: 'practice',
             difficulty: null,
+            routineId: null,
+            routineName: null,
+            plan: null,
             currentSet: 1,
             currentReps: 0,
             totalSessionReps: 0
@@ -294,6 +389,9 @@
         let timerInterval = null;
         let chartInstance = null;
         let audioCtx = null; // System Audio Node Reference Placeholder
+        let currentScreen = 'screen-main';
+        let routineEditorSets = [];
+        let editingRoutineId = null;
 
         // --------------------------------------------------------
         // MOUNT ENGINE OPERATIONS
@@ -301,7 +399,46 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadDataFromCache();
             updateChipsUI();
-            showScreen('screen-main');
+            const validScreens = ['screen-main', 'screen-difficulty', 'screen-routine-editor', 'screen-active', 'screen-progress', 'screen-history'];
+            const initialScreen = validScreens.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'screen-main';
+            history.replaceState({ screenId: initialScreen }, '', `${window.location.pathname}${window.location.search}#${initialScreen}`);
+            showScreen(initialScreen);
+            if (initialScreen === 'screen-progress') {
+                buildLogListUI();
+                updateBestStreaksUI();
+                renderAnalyticsChart();
+            } else if (initialScreen === 'screen-history') {
+                buildLogListUI('all-log-list-container', null);
+            } else if (initialScreen === 'screen-difficulty') {
+                renderCustomRoutines();
+            } else if (initialScreen === 'screen-routine-editor') {
+                goToCreateRoutine();
+            }
+
+            // Keep browser history in sync so the iPhone back gesture and
+            // Safari's back button use the same navigation as the app bar.
+            const syncScreenFromHistory = (event) => {
+                const hashScreen = window.location.hash.slice(1);
+                const nextScreen = event.state && event.state.screenId ? event.state.screenId :
+                    (validScreens.includes(hashScreen) ? hashScreen : 'screen-main');
+                if (currentScreen === 'screen-active' && nextScreen !== 'screen-active') {
+                    stopActiveSession({ navigate: false });
+                }
+                showScreen(nextScreen);
+                if (nextScreen === 'screen-progress') {
+                    buildLogListUI();
+                    updateBestStreaksUI();
+                    renderAnalyticsChart();
+                } else if (nextScreen === 'screen-history') {
+                    buildLogListUI('all-log-list-container', null);
+                } else if (nextScreen === 'screen-difficulty') {
+                    renderCustomRoutines();
+                }
+            };
+            window.addEventListener('popstate', syncScreenFromHistory);
+            // Some iOS/PWA shells report hash navigation through hashchange
+            // instead of popstate, so handle both browser back paths.
+            window.addEventListener('hashchange', () => syncScreenFromHistory({ state: window.history.state }));
 
             // Handle wake lock re-acquisition on visibility change
             document.addEventListener('visibilitychange', () => {
@@ -317,6 +454,7 @@
                 try {
                     const parsed = JSON.parse(stored);
                     appData.history = parsed.history || [];
+                    appData.customRoutines = Array.isArray(parsed.customRoutines) ? parsed.customRoutines : [];
 
                     // Backwards data migration logic for legacy cache instances
                     if (parsed.hasOwnProperty('lifetimeTotal') && !parsed.hasOwnProperty('lifetimePushups')) {
@@ -547,6 +685,7 @@
             if (type === 'squat') label = 'Squat';
             if (type === 'crunch') label = 'Crunch';
             diffTitle.textContent = `Select ${label} Difficulty`;
+            if (currentScreen === 'screen-difficulty') renderCustomRoutines();
         }
 
         function updateChipsUI() {
@@ -573,10 +712,230 @@
         // THEME HANDLING ENGINE
         // --------------------------------------------------------
         function showScreen(screenId) {
-            ['screen-main', 'screen-difficulty', 'screen-active', 'screen-progress'].forEach(id => {
+            ['screen-main', 'screen-difficulty', 'screen-routine-editor', 'screen-active', 'screen-progress', 'screen-history'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(screenId).classList.remove('hidden');
+            currentScreen = screenId;
+        }
+
+        function navigateTo(screenId, { replace = false } = {}) {
+            if (screenId === currentScreen) return;
+            const method = replace ? 'replaceState' : 'pushState';
+            window.history[method]({ screenId }, '', `${window.location.pathname}${window.location.search}#${screenId}`);
+            showScreen(screenId);
+        }
+
+        function goToStructuredTrainingScreen() {
+            navigateTo('screen-difficulty');
+            renderCustomRoutines();
+        }
+
+        function navigateBack() {
+            window.history.back();
+        }
+
+        function getExerciseLabel(type = activeExercise) {
+            if (type === 'squat') return 'Squats';
+            if (type === 'crunch') return 'Crunches';
+            return 'Push-ups';
+        }
+
+        function formatRestDuration(seconds) {
+            if (seconds === 0) return 'No rest';
+            const minutes = Math.floor(seconds / 60);
+            const remainder = seconds % 60;
+            if (minutes === 0) return `${remainder}s rest`;
+            if (remainder === 0) return `${minutes} min rest`;
+            return `${minutes}m ${remainder}s rest`;
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>'"]/g, character => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[character]));
+        }
+
+        function formatRestShort(seconds) {
+            if (seconds === 0) return "0 sec";
+            const minutes = Math.floor(seconds / 60);
+            const remainder = seconds % 60;
+            if (minutes === 0) return `${remainder} sec`;
+            if (remainder === 0) return `${minutes}min`;
+            return `${minutes}min ${remainder} sec`;
+        }
+
+        function formatRoutineSummary(routine) {
+            const setSummary = routine.sets.map((set, index) => {
+                if (index === routine.sets.length - 1) return `${set.reps}`;
+                return `${set.reps} - ${formatRestShort(set.restAfterSeconds)}`;
+            }).join(" / ");
+            return `${routine.sets.length} sets · ${setSummary}`;
+        }
+
+        function renderCustomRoutines() {
+            const container = document.getElementById('custom-routines-list');
+            if (!container) return;
+            const routines = appData.customRoutines.filter(routine => routine.exercise === activeExercise);
+            container.innerHTML = '';
+
+            if (routines.length === 0) {
+                container.innerHTML = `<div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-5 text-center text-sm text-slate-400">No custom routines yet.</div>`;
+                return;
+            }
+
+            routines.forEach(routine => {
+                const row = document.createElement('div');
+                row.className = "relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl shadow-sm hover:border-indigo-400 dark:hover:border-indigo-500 transition cursor-pointer";
+                row.setAttribute("role", "button");
+                row.setAttribute("tabindex", "0");
+                row.setAttribute("aria-label", `Start ${routine.name}`);
+                row.onclick = () => startCustomRoutine(routine.id);
+                row.onkeydown = event => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        startCustomRoutine(routine.id);
+                    }
+                };
+                row.innerHTML = `
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="font-bold text-slate-900 dark:text-white truncate">${escapeHtml(routine.name)}</div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 break-words">${formatRoutineSummary(routine)}</div>
+                        </div>
+                        <div class="relative shrink-0">
+                            <button type="button" onclick="toggleRoutineMenu(event, '${routine.id}')" aria-label="More options for ${escapeHtml(routine.name)}" aria-haspopup="menu"
+                                class="p-1.5 -mr-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
+                                <span class="text-xl leading-none" aria-hidden="true">⋮</span>
+                            </button>
+                            <div id="routine-menu-${routine.id}" data-routine-menu class="hidden absolute right-0 top-9 z-10 w-28 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1 shadow-lg" role="menu">
+                                <button type="button" onclick="event.stopPropagation(); editRoutine('${routine.id}')" class="block w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer" role="menuitem">Edit</button>
+                                <button type="button" onclick="event.stopPropagation(); deleteRoutine('${routine.id}')" class="block w-full px-3 py-2 text-left text-sm text-rose-600 dark:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer" role="menuitem">Delete</button>
+                            </div>
+                        </div>
+                    </div>`;
+                container.appendChild(row);
+            });
+        }
+
+        function toggleRoutineMenu(event, routineId) {
+            event.stopPropagation();
+            document.querySelectorAll("[data-routine-menu]").forEach(menu => {
+                if (menu.id !== `routine-menu-${routineId}`) menu.classList.add("hidden");
+            });
+            document.getElementById(`routine-menu-${routineId}`).classList.toggle("hidden");
+        }
+
+        function goToCreateRoutine() {
+            editingRoutineId = null;
+            routineEditorSets = [{ reps: 10, restAfterSeconds: 0 }];
+            document.getElementById('routine-editor-title').textContent = 'Create Routine';
+            document.getElementById('routine-name').value = '';
+            renderRoutineSetRows();
+            clearRoutineEditorError();
+            navigateTo('screen-routine-editor');
+        }
+
+        function editRoutine(routineId) {
+            const routine = appData.customRoutines.find(item => item.id === routineId);
+            if (!routine) return;
+            editingRoutineId = routineId;
+            routineEditorSets = routine.sets.map(set => ({ ...set }));
+            document.getElementById('routine-editor-title').textContent = 'Edit Routine';
+            document.getElementById('routine-name').value = routine.name;
+            renderRoutineSetRows();
+            clearRoutineEditorError();
+            navigateTo('screen-routine-editor');
+        }
+
+        function renderRoutineSetRows() {
+            const container = document.getElementById('routine-set-rows');
+            container.innerHTML = routineEditorSets.map((set, index) => `
+                <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Set ${index + 1}</span>
+                        <button type="button" onclick="removeRoutineSet(${index})" ${routineEditorSets.length === 1 ? 'disabled' : ''}
+                            class="text-xs font-semibold text-rose-500 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">Remove</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Reps
+                            <input data-field="reps" data-index="${index}" type="number" min="1" max="1000" value="${set.reps}" required
+                                class="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white">
+                        </label>
+                        ${index < routineEditorSets.length - 1 ? `<label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Rest after set (seconds)
+                            <input data-field="restAfterSeconds" data-index="${index}" type="number" min="0" max="3600" value="${set.restAfterSeconds}" required
+                                class="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white">
+                        </label>` : `<div class="flex items-end pb-2 text-xs text-slate-400">No rest after final set</div>`}
+                    </div>
+                </div>`).join('');
+        }
+
+        function addRoutineSet() {
+            if (routineEditorSets.length >= 20) return showRoutineEditorError('A routine can have at most 20 sets.');
+            readRoutineSetInputs();
+            routineEditorSets[routineEditorSets.length - 1].restAfterSeconds = 60;
+            routineEditorSets.push({ reps: 10, restAfterSeconds: 0 });
+            renderRoutineSetRows();
+            clearRoutineEditorError();
+        }
+
+        function removeRoutineSet(index) {
+            if (routineEditorSets.length === 1) return;
+            readRoutineSetInputs();
+            routineEditorSets.splice(index, 1);
+            routineEditorSets[routineEditorSets.length - 1].restAfterSeconds = 0;
+            renderRoutineSetRows();
+        }
+
+        function readRoutineSetInputs() {
+            document.querySelectorAll('#routine-set-rows input').forEach(input => {
+                routineEditorSets[Number(input.dataset.index)][input.dataset.field] = Number(input.value);
+            });
+        }
+
+        function saveRoutine(event) {
+            event.preventDefault();
+            readRoutineSetInputs();
+            const name = document.getElementById('routine-name').value.trim();
+            if (!name || name.length > 50) return showRoutineEditorError('Enter a routine name up to 50 characters.');
+            if (routineEditorSets.length < 1 || routineEditorSets.length > 20) return showRoutineEditorError('Use between 1 and 20 sets.');
+            if (routineEditorSets.some(set => !Number.isInteger(set.reps) || set.reps < 1 || set.reps > 1000)) return showRoutineEditorError('Each set must contain 1–1000 reps.');
+            if (routineEditorSets.slice(0, -1).some(set => !Number.isInteger(set.restAfterSeconds) || set.restAfterSeconds < 0 || set.restAfterSeconds > 3600)) return showRoutineEditorError('Rest must be between 0 and 3600 seconds.');
+
+            routineEditorSets[routineEditorSets.length - 1].restAfterSeconds = 0;
+            const now = new Date().toISOString();
+            const routine = {
+                id: editingRoutineId || `routine-${Date.now()}`,
+                name,
+                exercise: activeExercise,
+                sets: routineEditorSets.map(set => ({ reps: set.reps, restAfterSeconds: set.restAfterSeconds })),
+                createdAt: editingRoutineId ? (appData.customRoutines.find(item => item.id === editingRoutineId)?.createdAt || now) : now,
+                updatedAt: now
+            };
+            const existingIndex = appData.customRoutines.findIndex(item => item.id === routine.id);
+            if (existingIndex >= 0) appData.customRoutines[existingIndex] = routine;
+            else appData.customRoutines.unshift(routine);
+            saveDataToCache();
+            navigateTo('screen-difficulty', { replace: true });
+            renderCustomRoutines();
+        }
+
+        function deleteRoutine(routineId) {
+            const routine = appData.customRoutines.find(item => item.id === routineId);
+            if (!routine || !window.confirm(`Delete “${routine.name}”?`)) return;
+            appData.customRoutines = appData.customRoutines.filter(item => item.id !== routineId);
+            saveDataToCache();
+            renderCustomRoutines();
+        }
+
+        function showRoutineEditorError(message) {
+            const error = document.getElementById('routine-editor-error');
+            error.textContent = message;
+            error.classList.remove('hidden');
+        }
+
+        function clearRoutineEditorError() {
+            document.getElementById('routine-editor-error').classList.add('hidden');
         }
 
         // --------------------------------------------------------
@@ -588,6 +947,9 @@
             session.exercise = activeExercise;
             session.mode = 'practice';
             session.difficulty = null;
+            session.routineId = null;
+            session.routineName = null;
+            session.plan = null;
             session.currentSet = 1;
             session.currentReps = 0;
             session.totalSessionReps = 0;
@@ -603,24 +965,44 @@
             document.getElementById('active-tag-difficulty').classList.add('hidden');
             document.getElementById('active-set-counter').classList.add('hidden');
             document.getElementById('active-target-display').classList.add('hidden');
+            document.getElementById('rep-pace-progress').classList.add('hidden');
 
             document.getElementById('tap-instruction-text').textContent = `Tap Anywhere to Count ${label}s`;
 
             updateRepDisplay();
-            showScreen('screen-active');
+            navigateTo('screen-active');
         }
 
         function startTrainingMode(difficulty) {
+            const config = CONFIGS[difficulty];
+            startStructuredSession({
+                id: null,
+                name: `${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Routine`,
+                difficulty,
+                sets: Array.from({ length: config.totalSets }, (_, index) => ({
+                    reps: config.repsPerSet,
+                    restAfterSeconds: index === config.totalSets - 1 ? 0 : 60
+                }))
+            });
+        }
+
+        function startCustomRoutine(routineId) {
+            const routine = appData.customRoutines.find(item => item.id === routineId);
+            if (routine) startStructuredSession({ ...routine, difficulty: null });
+        }
+
+        function startStructuredSession(plan) {
             initAudioEngine();
             requestWakeLock();
             session.exercise = activeExercise;
             session.mode = 'training';
-            session.difficulty = difficulty;
+            session.difficulty = plan.difficulty;
+            session.routineId = plan.id || null;
+            session.routineName = plan.name;
+            session.plan = plan;
             session.currentSet = 1;
             session.currentReps = 0;
             session.totalSessionReps = 0;
-
-            const config = CONFIGS[difficulty];
 
             document.getElementById('active-tag-mode').textContent = 'Training';
 
@@ -631,21 +1013,26 @@
             exTag.textContent = label;
 
             const diffTag = document.getElementById('active-tag-difficulty');
-            diffTag.textContent = difficulty;
-            diffTag.className = `text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full border ${difficulty === 'easy' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
-                difficulty === 'medium' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
-                    'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                }`;
-            diffTag.classList.remove('hidden');
+            if (plan.difficulty) {
+                diffTag.textContent = plan.difficulty;
+                diffTag.className = `text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full border ${plan.difficulty === 'easy' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+                    plan.difficulty === 'medium' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
+                        'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                    }`;
+                diffTag.classList.remove('hidden');
+            } else {
+                diffTag.classList.add('hidden');
+            }
 
             document.getElementById('active-set-counter').classList.remove('hidden');
             document.getElementById('active-target-display').classList.remove('hidden');
-            document.getElementById('active-target-display').querySelector('span').textContent = config.repsPerSet;
+            document.getElementById('rep-pace-progress').classList.add('hidden');
+            document.getElementById('active-target-display').querySelector('span').textContent = plan.sets[0].reps;
             document.getElementById('tap-instruction-text').textContent = `Tap Anywhere to Count ${label}s`;
 
             updateSetCounterDisplay();
             updateRepDisplay();
-            showScreen('screen-active');
+            navigateTo('screen-active');
         }
 
         function handleScreenTap(event) {
@@ -657,10 +1044,12 @@
             session.currentReps++;
             session.totalSessionReps++;
             updateRepDisplay();
+            document.getElementById('rep-pace-progress').classList.remove('hidden');
+            restartRepPaceAnimation();
 
             if (session.mode === 'training') {
-                const config = CONFIGS[session.difficulty];
-                if (session.currentReps >= config.repsPerSet) {
+                const set = session.plan.sets[session.currentSet - 1];
+                if (session.currentReps >= set.reps) {
                     handleSetCompletion();
                 }
             }
@@ -670,9 +1059,18 @@
             document.getElementById('active-rep-display').textContent = session.currentReps;
         }
 
+        function restartRepPaceAnimation() {
+            const progress = document.getElementById('rep-pace-progress');
+            progress.getAnimations().forEach(animation => animation.cancel());
+            progress.classList.remove('is-counting');
+            requestAnimationFrame(() => progress.classList.add('is-counting'));
+        }
+
         function updateSetCounterDisplay() {
             if (session.mode === 'training') {
-                document.getElementById('active-set-counter').textContent = `Set ${session.currentSet} of ${CONFIGS[session.difficulty].totalSets}`;
+                const set = session.plan.sets[session.currentSet - 1];
+                document.getElementById('active-set-counter').textContent = `Set ${session.currentSet} of ${session.plan.sets.length}`;
+                document.getElementById('active-target-display').querySelector('span').textContent = set.reps;
             }
         }
 
@@ -680,32 +1078,39 @@
         // TIMING AUTOMATIONS & INTERMISSIONS
         // --------------------------------------------------------
         function handleSetCompletion() {
-            const config = CONFIGS[session.difficulty];
-            if (session.currentSet >= config.totalSets) {
+            const set = session.plan.sets[session.currentSet - 1];
+            if (session.currentSet >= session.plan.sets.length) {
                 stopActiveSession();
+            } else if (set.restAfterSeconds === 0) {
+                exitRestInterval();
             } else {
-                launchRestInterval();
+                launchRestInterval(set.restAfterSeconds);
             }
         }
 
-        function launchRestInterval() {
+        function launchRestInterval(durationSeconds) {
             const overlay = document.getElementById('rest-overlay');
             const timerView = document.getElementById('rest-timer-display');
-            let timeLeft = 60;
+            let timeLeft = durationSeconds;
 
-            timerView.textContent = "01:00";
+            timerView.textContent = formatTimerDisplay(timeLeft);
             overlay.classList.remove('hidden');
 
             timerInterval = setInterval(() => {
                 timeLeft--;
-                const secondsStr = timeLeft < 10 ? `0${timeLeft}` : timeLeft;
-                timerView.textContent = `00:${secondsStr}`;
+                timerView.textContent = formatTimerDisplay(timeLeft);
 
                 if (timeLeft <= 0) {
                     playTimerCompletionSound(); // Plays the notification sequence 3 times sequentially
                     exitRestInterval();
                 }
             }, 1000);
+        }
+
+        function formatTimerDisplay(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+            return `${minutes}:${seconds}`;
         }
 
         function skipRestTimer() {
@@ -720,9 +1125,10 @@
             session.currentReps = 0;
             updateSetCounterDisplay();
             updateRepDisplay();
+            document.getElementById('rep-pace-progress').classList.add('hidden');
         }
 
-        function stopActiveSession() {
+        function stopActiveSession({ navigate = true } = {}) {
             clearInterval(timerInterval);
             releaseWakeLock();
             document.getElementById('rest-overlay').classList.add('hidden');
@@ -733,9 +1139,12 @@
                 const logEntry = {
                     id: Date.now().toString(),
                     date: todayStr,
+                    completedAt: new Date().toISOString(),
                     exercise: session.exercise,
                     mode: session.mode,
                     difficulty: session.difficulty,
+                    routineId: session.routineId,
+                    routineName: session.routineName,
                     totalRepsCompleted: session.totalSessionReps
                 };
 
@@ -752,7 +1161,7 @@
                 saveDataToCache();
             }
 
-            showScreen('screen-main');
+            if (navigate) navigateTo('screen-main', { replace: true });
         }
 
         // --------------------------------------------------------
@@ -760,14 +1169,19 @@
         // --------------------------------------------------------
         function goToProgressScreen() {
             initAudioEngine();
-            showScreen('screen-progress');
+            navigateTo('screen-progress');
             buildLogListUI();
             updateBestStreaksUI();
             renderAnalyticsChart();
         }
 
-        function buildLogListUI() {
-            const container = document.getElementById('log-list-container');
+        function goToWorkoutHistoryScreen() {
+            navigateTo('screen-history');
+            buildLogListUI('all-log-list-container', null);
+        }
+
+        function buildLogListUI(containerId = 'log-list-container', limit = 3) {
+            const container = document.getElementById(containerId);
             container.innerHTML = '';
 
             if (appData.history.length === 0) {
@@ -775,14 +1189,20 @@
                 return;
             }
 
-            appData.history.slice(0, 15).forEach(log => {
+            const logs = limit === null ? appData.history : appData.history.slice(0, limit);
+            logs.forEach(log => {
                 const row = document.createElement('div');
                 row.className = "flex items-center justify-between bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-sm shadow-sm";
 
                 const dateObj = new Date(log.date);
                 const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const completedAt = log.completedAt || (Number.isFinite(Number(log.id)) ? Number(log.id) : null);
+                const formattedTime = completedAt
+                    ? new Date(completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                    : null;
 
-                const modeLabel = log.mode === 'practice' ? 'Practice' : `${log.difficulty.charAt(0).toUpperCase() + log.difficulty.slice(1)} Routine`;
+                const modeLabel = log.mode === 'practice' ? 'Practice' :
+                    (log.routineName || `${log.difficulty.charAt(0).toUpperCase() + log.difficulty.slice(1)} Routine`);
                 
                 let exerciseTypeLabel = 'Push-ups';
                 if (log.exercise === 'squat') exerciseTypeLabel = 'Squats';
@@ -795,7 +1215,7 @@
                 row.innerHTML = `
           <div>
             <div class="font-semibold text-slate-800 dark:text-slate-200">${exerciseTypeLabel} <span class="text-xs font-normal text-slate-400 dark:text-slate-500">(${modeLabel})</span></div>
-            <div class="text-xs text-slate-400 dark:text-slate-500">${formattedDate}</div>
+            <div class="text-xs text-slate-400 dark:text-slate-500">${formattedDate}${formattedTime ? ` · ${formattedTime}` : ''}</div>
           </div>
           <div class="text-lg font-bold ${colorMetricClass}">+${log.totalRepsCompleted}</div>
         `;
