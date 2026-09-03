@@ -238,11 +238,26 @@
 
                 <div>
                     <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">Recent Workouts</h3>
-                    <div id="log-list-container" class="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                    <div id="log-list-container" class="space-y-2">
                     </div>
+                    <button type="button" onclick="goToWorkoutHistoryScreen()"
+                        class="w-full mt-3 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
+                        View all workouts
+                    </button>
                 </div>
             </div>
 
+        </section>
+
+        <section id="screen-history" class="hidden flex-1 py-6">
+            <div class="flex items-center gap-3 mb-6">
+                <button type="button" onclick="navigateBack()" aria-label="Back to progress"
+                    class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <h1 class="text-lg font-bold text-slate-900 dark:text-white">Workout History</h1>
+            </div>
+            <div id="all-log-list-container" class="space-y-2"></div>
         </section>
 
     </main>
@@ -312,7 +327,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadDataFromCache();
             updateChipsUI();
-            const validScreens = ['screen-main', 'screen-difficulty', 'screen-active', 'screen-progress'];
+            const validScreens = ['screen-main', 'screen-difficulty', 'screen-active', 'screen-progress', 'screen-history'];
             const initialScreen = validScreens.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'screen-main';
             history.replaceState({ screenId: initialScreen }, '', `${window.location.pathname}${window.location.search}#${initialScreen}`);
             showScreen(initialScreen);
@@ -320,6 +335,8 @@
                 buildLogListUI();
                 updateBestStreaksUI();
                 renderAnalyticsChart();
+            } else if (initialScreen === 'screen-history') {
+                buildLogListUI('all-log-list-container', null);
             }
 
             // Keep browser history in sync so the iPhone back gesture and
@@ -336,6 +353,8 @@
                     buildLogListUI();
                     updateBestStreaksUI();
                     renderAnalyticsChart();
+                } else if (nextScreen === 'screen-history') {
+                    buildLogListUI('all-log-list-container', null);
                 }
             };
             window.addEventListener('popstate', syncScreenFromHistory);
@@ -613,7 +632,7 @@
         // THEME HANDLING ENGINE
         // --------------------------------------------------------
         function showScreen(screenId) {
-            ['screen-main', 'screen-difficulty', 'screen-active', 'screen-progress'].forEach(id => {
+            ['screen-main', 'screen-difficulty', 'screen-active', 'screen-progress', 'screen-history'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(screenId).classList.remove('hidden');
@@ -785,6 +804,7 @@
                 const logEntry = {
                     id: Date.now().toString(),
                     date: todayStr,
+                    completedAt: new Date().toISOString(),
                     exercise: session.exercise,
                     mode: session.mode,
                     difficulty: session.difficulty,
@@ -818,8 +838,13 @@
             renderAnalyticsChart();
         }
 
-        function buildLogListUI() {
-            const container = document.getElementById('log-list-container');
+        function goToWorkoutHistoryScreen() {
+            navigateTo('screen-history');
+            buildLogListUI('all-log-list-container', null);
+        }
+
+        function buildLogListUI(containerId = 'log-list-container', limit = 3) {
+            const container = document.getElementById(containerId);
             container.innerHTML = '';
 
             if (appData.history.length === 0) {
@@ -827,12 +852,17 @@
                 return;
             }
 
-            appData.history.slice(0, 15).forEach(log => {
+            const logs = limit === null ? appData.history : appData.history.slice(0, limit);
+            logs.forEach(log => {
                 const row = document.createElement('div');
                 row.className = "flex items-center justify-between bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-sm shadow-sm";
 
                 const dateObj = new Date(log.date);
                 const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const completedAt = log.completedAt || (Number.isFinite(Number(log.id)) ? Number(log.id) : null);
+                const formattedTime = completedAt
+                    ? new Date(completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                    : null;
 
                 const modeLabel = log.mode === 'practice' ? 'Practice' : `${log.difficulty.charAt(0).toUpperCase() + log.difficulty.slice(1)} Routine`;
                 
@@ -847,7 +877,7 @@
                 row.innerHTML = `
           <div>
             <div class="font-semibold text-slate-800 dark:text-slate-200">${exerciseTypeLabel} <span class="text-xs font-normal text-slate-400 dark:text-slate-500">(${modeLabel})</span></div>
-            <div class="text-xs text-slate-400 dark:text-slate-500">${formattedDate}</div>
+            <div class="text-xs text-slate-400 dark:text-slate-500">${formattedDate}${formattedTime ? ` · ${formattedTime}` : ''}</div>
           </div>
           <div class="text-lg font-bold ${colorMetricClass}">+${log.totalRepsCompleted}</div>
         `;
