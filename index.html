@@ -96,7 +96,7 @@
                     class="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-[0.99] text-white font-bold py-4 px-6 rounded-xl transition shadow-lg shadow-indigo-900/10 dark:shadow-indigo-900/30 cursor-pointer">
                     🔥 Practice Free-play
                 </button>
-                <button onclick="showScreen('screen-difficulty')"
+                <button onclick="navigateTo('screen-difficulty')"
                     class="w-full bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 active:scale-[0.99] text-slate-800 dark:text-white font-bold py-4 px-6 rounded-xl transition cursor-pointer shadow-sm">
                     🏆 Structured Training
                 </button>
@@ -109,6 +109,13 @@
 
         <section id="screen-difficulty" class="hidden flex-1 flex flex-col justify-between py-6">
             <div>
+                <div class="flex items-center gap-3 mb-6">
+                    <button type="button" onclick="navigateBack()" aria-label="Back to menu"
+                        class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h1 class="text-lg font-bold text-slate-900 dark:text-white">Structured Training</h1>
+                </div>
                 <h2 id="difficulty-title" class="text-2xl font-bold mb-1 text-slate-900 dark:text-white">Select
                     Difficulty</h2>
                 <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">Choose a structured hardcoded workout routine
@@ -137,14 +144,14 @@
                 </div>
             </div>
 
-            <button onclick="showScreen('screen-main')"
-                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 py-3.5 px-6 rounded-xl font-medium transition cursor-pointer shadow-sm">
-                Back to Menu
-            </button>
         </section>
 
         <section id="screen-active" class="hidden flex-1 flex flex-col justify-between tap-zone select-none py-6">
-            <div class="flex items-center justify-between pointer-events-none">
+            <div class="flex items-center gap-3 pointer-events-auto">
+                <button type="button" onclick="navigateBack()" aria-label="Leave workout"
+                    class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
                 <div class="flex items-center gap-1.5">
                     <span id="active-tag-mode"
                         class="text-xs font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Practice</span>
@@ -196,8 +203,15 @@
 
         <section id="screen-progress" class="hidden flex-1 flex flex-col justify-between py-6">
             <div class="space-y-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">Your Progress</h2>
+            <div>
+                <div class="flex items-center gap-3 mb-6">
+                    <button type="button" onclick="navigateBack()" aria-label="Back to menu"
+                        class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h1 class="text-lg font-bold text-slate-900 dark:text-white">Progress</h1>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">Your Progress</h2>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Performance tracking history</p>
                 </div>
 
@@ -229,10 +243,6 @@
                 </div>
             </div>
 
-            <button onclick="showScreen('screen-main')"
-                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 py-3.5 px-6 rounded-xl font-medium transition cursor-pointer mt-4 shadow-sm">
-                Back to Menu
-            </button>
         </section>
 
     </main>
@@ -294,6 +304,7 @@
         let timerInterval = null;
         let chartInstance = null;
         let audioCtx = null; // System Audio Node Reference Placeholder
+        let currentScreen = 'screen-main';
 
         // --------------------------------------------------------
         // MOUNT ENGINE OPERATIONS
@@ -301,7 +312,36 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadDataFromCache();
             updateChipsUI();
-            showScreen('screen-main');
+            const validScreens = ['screen-main', 'screen-difficulty', 'screen-active', 'screen-progress'];
+            const initialScreen = validScreens.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'screen-main';
+            history.replaceState({ screenId: initialScreen }, '', `${window.location.pathname}${window.location.search}#${initialScreen}`);
+            showScreen(initialScreen);
+            if (initialScreen === 'screen-progress') {
+                buildLogListUI();
+                updateBestStreaksUI();
+                renderAnalyticsChart();
+            }
+
+            // Keep browser history in sync so the iPhone back gesture and
+            // Safari's back button use the same navigation as the app bar.
+            const syncScreenFromHistory = (event) => {
+                const hashScreen = window.location.hash.slice(1);
+                const nextScreen = event.state && event.state.screenId ? event.state.screenId :
+                    (validScreens.includes(hashScreen) ? hashScreen : 'screen-main');
+                if (currentScreen === 'screen-active' && nextScreen !== 'screen-active') {
+                    stopActiveSession({ navigate: false });
+                }
+                showScreen(nextScreen);
+                if (nextScreen === 'screen-progress') {
+                    buildLogListUI();
+                    updateBestStreaksUI();
+                    renderAnalyticsChart();
+                }
+            };
+            window.addEventListener('popstate', syncScreenFromHistory);
+            // Some iOS/PWA shells report hash navigation through hashchange
+            // instead of popstate, so handle both browser back paths.
+            window.addEventListener('hashchange', () => syncScreenFromHistory({ state: window.history.state }));
 
             // Handle wake lock re-acquisition on visibility change
             document.addEventListener('visibilitychange', () => {
@@ -577,6 +617,18 @@
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(screenId).classList.remove('hidden');
+            currentScreen = screenId;
+        }
+
+        function navigateTo(screenId, { replace = false } = {}) {
+            if (screenId === currentScreen) return;
+            const method = replace ? 'replaceState' : 'pushState';
+            window.history[method]({ screenId }, '', `${window.location.pathname}${window.location.search}#${screenId}`);
+            showScreen(screenId);
+        }
+
+        function navigateBack() {
+            window.history.back();
         }
 
         // --------------------------------------------------------
@@ -607,7 +659,7 @@
             document.getElementById('tap-instruction-text').textContent = `Tap Anywhere to Count ${label}s`;
 
             updateRepDisplay();
-            showScreen('screen-active');
+            navigateTo('screen-active');
         }
 
         function startTrainingMode(difficulty) {
@@ -645,7 +697,7 @@
 
             updateSetCounterDisplay();
             updateRepDisplay();
-            showScreen('screen-active');
+            navigateTo('screen-active');
         }
 
         function handleScreenTap(event) {
@@ -722,7 +774,7 @@
             updateRepDisplay();
         }
 
-        function stopActiveSession() {
+        function stopActiveSession({ navigate = true } = {}) {
             clearInterval(timerInterval);
             releaseWakeLock();
             document.getElementById('rest-overlay').classList.add('hidden');
@@ -752,7 +804,7 @@
                 saveDataToCache();
             }
 
-            showScreen('screen-main');
+            if (navigate) navigateTo('screen-main', { replace: true });
         }
 
         // --------------------------------------------------------
@@ -760,7 +812,7 @@
         // --------------------------------------------------------
         function goToProgressScreen() {
             initAudioEngine();
-            showScreen('screen-progress');
+            navigateTo('screen-progress');
             buildLogListUI();
             updateBestStreaksUI();
             renderAnalyticsChart();
